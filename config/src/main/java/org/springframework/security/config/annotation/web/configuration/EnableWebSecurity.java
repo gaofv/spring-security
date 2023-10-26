@@ -16,17 +16,13 @@
 
 package org.springframework.security.config.annotation.web.configuration;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.config.annotation.authentication.configuration.EnableGlobalAuthentication;
 import org.springframework.security.config.annotation.web.WebSecurityConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
+
+import java.lang.annotation.*;
 
 /**
  * Add this annotation to an {@code @Configuration} class to have the Spring Security
@@ -43,7 +39,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * 		return (web) -> web.ignoring()
  * 		// Spring Security should completely ignore URLs starting with /resources/
  * 				.antMatchers(&quot;/resources/**&quot;);
- * 	}
+ *    }
  *
  * 	&#064;Bean
  * 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -54,7 +50,7 @@ import org.springframework.security.web.SecurityFilterChain;
  * 				// set permitAll for all URLs associated with Form Login
  * 				.permitAll();
  * 		return http.build();
- * 	}
+ *    }
  *
  * 	&#064;Bean
  * 	public UserDetailsService userDetailsService() {
@@ -69,28 +65,38 @@ import org.springframework.security.web.SecurityFilterChain;
  * 			.roles(&quot;ADMIN&quot;, &quot;USER&quot;)
  * 			.build();
  * 		return new InMemoryUserDetailsManager(user, admin);
- * 	}
+ *    }
  *
  * 	// Possibly more bean methods ...
  * }
  * </pre>
  *
- * @see WebSecurityConfigurer
- *
  * @author Rob Winch
+ * @see WebSecurityConfigurer
  * @since 3.2
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
 @Documented
-@Import({ WebSecurityConfiguration.class, SpringWebMvcImportSelector.class, OAuth2ImportSelector.class,
-		HttpSecurityConfiguration.class })
+/**
+ * 导入了四个配置类
+ * WebSecurityConfiguration：使用自定义WebSecurityConfigurer和WebSecurityCustomizer配置WebSecurity，并创建SecurityFilterChain
+ * SpringWebMvcImportSelector：引入SpringMVC相关配置
+ * OAuth2ImportSelector：引入OAuth2相关配置
+ * HttpSecurityConfiguration：注入HttpSecurity
+ */
+@Import({WebSecurityConfiguration.class, SpringWebMvcImportSelector.class, OAuth2ImportSelector.class,
+		HttpSecurityConfiguration.class})
+/**
+ * 导入配置类AuthenticationConfiguration
+ */
 @EnableGlobalAuthentication
 @Configuration
 public @interface EnableWebSecurity {
 
 	/**
 	 * Controls debugging support for Spring Security. Default is false.
+	 *
 	 * @return if true, enables debug support with Spring Security
 	 */
 	boolean debug() default false;

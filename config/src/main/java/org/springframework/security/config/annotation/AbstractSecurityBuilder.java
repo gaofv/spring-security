@@ -24,14 +24,21 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * @param <O> the type of Object that is being built
  * @author Rob Winch
- *
+ * AbstractSecurityBuilder 类实现了 SecurityBuilder 接口，
+ * 该类中主要做了一件事，就是确保整个构建只被构建一次。
  */
 public abstract class AbstractSecurityBuilder<O> implements SecurityBuilder<O> {
-
 	private AtomicBoolean building = new AtomicBoolean();
 
 	private O object;
 
+	/**
+	 * 重写了build方法，并设置build为final类型，无法被重写。
+	 * 在build方法中，通过AtomicBoolean实现该方法只调用一次。具体的构建逻辑在抽象方法doBuild中定义
+	 *
+	 * @return
+	 * @throws Exception
+	 */
 	@Override
 	public final O build() throws Exception {
 		if (this.building.compareAndSet(false, true)) {

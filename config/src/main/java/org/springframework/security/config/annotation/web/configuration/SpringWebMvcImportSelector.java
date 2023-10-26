@@ -27,6 +27,8 @@ import org.springframework.util.ClassUtils;
  *
  * @author Rob Winch
  * @since 3.2
+ *
+ * 判断当前环境中是否存在Spring MVC的DispatcherServlet，如果存在则注入WebMvcSecurityConfiguration
  */
 class SpringWebMvcImportSelector implements ImportSelector {
 

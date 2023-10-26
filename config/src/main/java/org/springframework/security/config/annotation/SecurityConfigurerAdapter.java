@@ -16,12 +16,12 @@
 
 package org.springframework.security.config.annotation;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.springframework.core.GenericTypeResolver;
 import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.util.Assert;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A base class for {@link SecurityConfigurer} that allows subclasses to only implement
@@ -34,6 +34,9 @@ import org.springframework.util.Assert;
  * {@link SecurityConfigurerAdapter}
  * @author Rob Winch
  * @author Wallace Wadge
+ *
+ * （1）为每个配置类都提供一个SecurityBuilder对象
+ * （2）提供了一个addObjectPostProcessor方法，通过该方法添加新的ObjectPostProcessor实例
  */
 public abstract class SecurityConfigurerAdapter<O, B extends SecurityBuilder<O>> implements SecurityConfigurer<O, B> {
 

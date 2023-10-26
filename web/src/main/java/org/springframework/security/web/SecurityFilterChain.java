@@ -29,11 +29,22 @@ import javax.servlet.http.HttpServletRequest;
  *
  * @author Luke Taylor
  * @since 3.1
+ *
+ * SecurityFilterChain就是Spring Security的过滤器对象
  */
 public interface SecurityFilterChain {
 
+	/**
+	 * 判断request请求是否应该被当前过滤器链处理
+	 * @param request
+	 * @return
+	 */
 	boolean matches(HttpServletRequest request);
 
+	/**
+	 * 方法返回一个过滤器集合，如果matches返回true，那么request就会在getFilters返回的所有过滤器中处理
+	 * @return
+	 */
 	List<Filter> getFilters();
 
 }

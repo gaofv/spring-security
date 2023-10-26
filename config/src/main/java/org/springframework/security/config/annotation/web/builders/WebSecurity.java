@@ -84,20 +84,26 @@ import org.springframework.web.filter.DelegatingFilterProxy;
  * @since 3.2
  * @see EnableWebSecurity
  * @see WebSecurityConfiguration
+ * 1. WebSecurity在WebSecurityConfiguration中创建，用于创建代理过滤器链FilterChainProxy
+ * 2. 一个HttpSecurity对象可以构建一个过滤器链，而一个项目中可以存在多个HttpSecurity对象，也就可以构建多个SecurityFilterChain过滤器链
+ * 	  WebSecurity负责将HttpSecurity所构建的过滤器链再次重新构建为一个FilterChainProxy，同时添加防火墙或者释放一些静态资源
+ * 3. 5.7版本之前，WebSecurity可以通过WebSecurityConfigurerAdapter自定义。5.7.0-M2之后，通过创建WebSecurityCustomizer
+ * 	  类型的bean来自定义WebSecurity
  */
 public final class WebSecurity extends AbstractConfiguredSecurityBuilder<Filter, WebSecurity>
 		implements SecurityBuilder<Filter>, ApplicationContextAware, ServletContextAware {
 
 	private final Log logger = LogFactory.getLog(getClass());
-
+	// 保存所有忽略的请求，可以用来忽略一些静态资源
 	private final List<RequestMatcher> ignoredRequests = new ArrayList<>();
-
+	// 保存所有的HttpSecurity对象，每个HttpSecurity对象创建成功之后，
+	// 通过addSecurityFilterChainBuilder方法添加到securityFilterChainBuilders集合中
 	private final List<SecurityBuilder<? extends SecurityFilterChain>> securityFilterChainBuilders = new ArrayList<>();
 
 	private IgnoredRequestConfigurer ignoredRequestRegistry;
 
 	private FilterSecurityInterceptor filterSecurityInterceptor;
-
+	// 设置请求防火墙
 	private HttpFirewall httpFirewall;
 
 	private RequestRejectedHandler requestRejectedHandler;

@@ -16,20 +16,13 @@
 
 package org.springframework.security.config.annotation;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.util.Assert;
 import org.springframework.web.filter.DelegatingFilterProxy;
+
+import java.util.*;
 
 /**
  * <p>
@@ -49,18 +42,29 @@ import org.springframework.web.filter.DelegatingFilterProxy;
  * @param <B> The type of this builder (that is returned by the base class)
  * @author Rob Winch
  * @see WebSecurity
+ *
+ * TODO 继承自AbstractSecurityBuilder，实现其doBuild方法完成过滤器的构建
+ *  SecurityBuilder会读取SecurityConfigurer配置信息，创建过滤器链
  */
 public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBuilder<O>>
 		extends AbstractSecurityBuilder<O> {
 
 	private final Log logger = LogFactory.getLog(getClass());
-
+	/**
+	 * TODO SecurityConfigurer配置集合，自定义配置也在其中。key为配置类的Class对象，value为配置类集合
+	 */
 	private final LinkedHashMap<Class<? extends SecurityConfigurer<O, B>>, List<SecurityConfigurer<O, B>>> configurers = new LinkedHashMap<>();
-
+	/**
+	 * TODO 初始化中的配置集合
+	 */
 	private final List<SecurityConfigurer<O, B>> configurersAddedInInitializing = new ArrayList<>();
-
+	/**
+	 * 存储过滤器的共享对象
+	 */
 	private final Map<Class<?>, Object> sharedObjects = new HashMap<>();
-
+	/**
+	 * TODO configurers中是否允许有多个相同类型的配置类
+	 */
 	private final boolean allowConfigurersOfSameType;
 
 	private BuildState buildState = BuildState.UNBUILT;
@@ -117,6 +121,8 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 	 * @param configurer
 	 * @return the {@link SecurityConfigurerAdapter} for further customizations
 	 * @throws Exception
+	 *
+	 * 向 configurers 集合中添加配置类
 	 */
 	@SuppressWarnings("unchecked")
 	public <C extends SecurityConfigurerAdapter<O, B>> C apply(C configurer) throws Exception {
@@ -133,6 +139,8 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 	 * @param configurer
 	 * @return the {@link SecurityConfigurerAdapter} for further customizations
 	 * @throws Exception
+	 *
+	 * 向 configurers 集合中添加配置类
 	 */
 	public <C extends SecurityConfigurer<O, B>> C apply(C configurer) throws Exception {
 		add(configurer);
@@ -171,16 +179,23 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 	 * Adds {@link SecurityConfigurer} ensuring that it is allowed and invoking
 	 * {@link SecurityConfigurer#init(SecurityBuilder)} immediately if necessary.
 	 * @param configurer the {@link SecurityConfigurer} to add
+	 *
+	 * 将所有的配置类保存到 configurers 集合中
 	 */
 	@SuppressWarnings("unchecked")
 	private <C extends SecurityConfigurer<O, B>> void add(C configurer) {
 		Assert.notNull(configurer, "configurer cannot be null");
+		// 获取当前配置类的class类型
 		Class<? extends SecurityConfigurer<O, B>> clazz = (Class<? extends SecurityConfigurer<O, B>>) configurer
 				.getClass();
+		// 对集合加锁，保证线程安全
 		synchronized (this.configurers) {
+			// 保证没有配置过
 			if (this.buildState.isConfigured()) {
 				throw new IllegalStateException("Cannot apply " + configurer + " to already built object");
 			}
+			// allowConfigurersOfSameType为true时，List集合中可以存在多个相同类型的配置类
+			// 为false时，List集合中的配置类始终只能有一个
 			List<SecurityConfigurer<O, B>> configs = null;
 			if (this.allowConfigurersOfSameType) {
 				configs = this.configurers.get(clazz);
@@ -199,6 +214,8 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 	 * List if not found. Note that object hierarchies are not considered.
 	 * @param clazz the {@link SecurityConfigurer} class to look for
 	 * @return a list of {@link SecurityConfigurer}s for further customization
+	 *
+	 * 返回某一个配置类的所有实例
 	 */
 	@SuppressWarnings("unchecked")
 	public <C extends SecurityConfigurer<O, B>> List<C> getConfigurers(Class<C> clazz) {
@@ -297,17 +314,22 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 	 * <li>Invokes {@link #beforeConfigure()} for any subclass to hook into</li>
 	 * <li>Invokes {@link #performBuild()} which actually builds the Object</li>
 	 * </ul>
+	 *
+	 * 核心的构建方法，SpringSecurity的过滤器链及代理过滤器链均是在这里构建
 	 */
 	@Override
 	protected final O doBuild() throws Exception {
 		synchronized (this.configurers) {
 			this.buildState = BuildState.INITIALIZING;
 			beforeInit();
+			// 遍历所有的配置类，并执行其init方法
 			init();
 			this.buildState = BuildState.CONFIGURING;
 			beforeConfigure();
+			// 遍历所有的配置类，并执行其 configure 方法
 			configure();
 			this.buildState = BuildState.BUILDING;
+			// 真正过滤器链的构建方法，该方法是抽象方法真正的实现在具体的配置类中
 			O result = performBuild();
 			this.buildState = BuildState.BUILT;
 			return result;
@@ -376,7 +398,7 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 
 	/**
 	 * The build state for the application
-	 *
+	 * 对象构建过程中的状态枚举
 	 * @author Rob Winch
 	 * @since 3.2
 	 */
@@ -384,12 +406,14 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 
 		/**
 		 * This is the state before the {@link Builder#build()} is invoked
+		 * 构建前
 		 */
 		UNBUILT(0),
 
 		/**
 		 * The state from when {@link Builder#build()} is first invoked until all the
 		 * {@link SecurityConfigurer#init(SecurityBuilder)} methods have been invoked.
+		 * 初始化中
 		 */
 		INITIALIZING(1),
 
@@ -398,6 +422,7 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 		 * been invoked until after all the
 		 * {@link SecurityConfigurer#configure(SecurityBuilder)} methods have been
 		 * invoked.
+		 * 配置中
 		 */
 		CONFIGURING(2),
 
@@ -405,11 +430,13 @@ public abstract class AbstractConfiguredSecurityBuilder<O, B extends SecurityBui
 		 * From the point after all the
 		 * {@link SecurityConfigurer#configure(SecurityBuilder)} have completed to just
 		 * after {@link AbstractConfiguredSecurityBuilder#performBuild()}.
+		 * 构建中
 		 */
 		BUILDING(3),
 
 		/**
 		 * After the object has been completely built.
+		 * 构建完成
 		 */
 		BUILT(4);
 

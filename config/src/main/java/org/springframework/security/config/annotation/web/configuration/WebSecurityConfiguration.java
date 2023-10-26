@@ -16,12 +16,6 @@
 
 package org.springframework.security.config.annotation.web.configuration;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-
-import javax.servlet.Filter;
-
 import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.BeanFactoryPostProcessor;
@@ -51,6 +45,11 @@ import org.springframework.security.web.access.intercept.FilterSecurityIntercept
 import org.springframework.security.web.context.AbstractSecurityWebApplicationInitializer;
 import org.springframework.util.Assert;
 
+import javax.servlet.Filter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Uses a {@link WebSecurity} to create the {@link FilterChainProxy} that performs the web
  * based security for Spring Security. It then exports the necessary beans. Customizations
@@ -63,18 +62,33 @@ import org.springframework.util.Assert;
  * @since 3.2
  * @see EnableWebSecurity
  * @see WebSecurity
+ *
+ * 1. 实现了ImportAware接口，在setImportMetadata方法中可获取使用了@Import注解导入该类的原数据信息，从而获取@EnableWebSecurity的debug属性
+ * 2. 实现了BeanClassLoaderAware，在setBeanClassLoader方法中获取类加载器
+ * 3. 主要作用是为了构建WebSecurity和FilterChainProxy
  */
 @Configuration(proxyBeanMethods = false)
 public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAware {
-
+	/**
+	 * WebSecurity用于创建springSecurityFilterChain(FilterChainProxy)，
+	 * 可以通过实现WebSecurityConfigurer（5.7之前）或者WebSecurityCustomizer（5.7之后）自定义WebSecurity
+	 */
 	private WebSecurity webSecurity;
-
+	/**
+	 * 是否开启debug，读取@EnableWebSecurity的debug属性
+	 */
 	private Boolean debugEnabled;
-
+	/**
+	 * 配置类集合，一个WebSecurity就代表一条过滤器链
+	 */
 	private List<SecurityConfigurer<Filter, WebSecurity>> webSecurityConfigurers;
-
+	/**
+	 * SecurityFilterChain集合，SecurityFilterChain由HttpSecurity构建
+	 */
 	private List<SecurityFilterChain> securityFilterChains = Collections.emptyList();
-
+	/**
+	 * WebSecurityCustomizer集合，用于自定义WebSecurity
+	 */
 	private List<WebSecurityCustomizer> webSecurityCustomizers = Collections.emptyList();
 
 	private ClassLoader beanClassLoader;
@@ -97,19 +111,26 @@ public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAwa
 	 * Creates the Spring Security Filter Chain
 	 * @return the {@link Filter} that represents the security filter chain
 	 * @throws Exception
+	 *
+	 * 使用
 	 */
 	@Bean(name = AbstractSecurityWebApplicationInitializer.DEFAULT_FILTER_NAME)
 	public Filter springSecurityFilterChain() throws Exception {
+		// 是否有配置类WebSecurityConfigurer
 		boolean hasConfigurers = this.webSecurityConfigurers != null && !this.webSecurityConfigurers.isEmpty();
+		// 是否有SecurityFilterChain
 		boolean hasFilterChain = !this.securityFilterChains.isEmpty();
+		// WebSecurityConfigurer和SecurityFilterChain不能同时使用
 		Assert.state(!(hasConfigurers && hasFilterChain),
 				"Found WebSecurityConfigurerAdapter as well as SecurityFilterChain. Please select just one.");
+		// 都不存在时，创建匿名的配置类并注册到Spring容器中
 		if (!hasConfigurers && !hasFilterChain) {
 			WebSecurityConfigurerAdapter adapter = this.objectObjectPostProcessor
 					.postProcess(new WebSecurityConfigurerAdapter() {
 					});
 			this.webSecurity.apply(adapter);
 		}
+		// 添加SecurityFilterChain的构造器SecurityBuilder和securityInterceptor
 		for (SecurityFilterChain securityFilterChain : this.securityFilterChains) {
 			this.webSecurity.addSecurityFilterChainBuilder(() -> securityFilterChain);
 			for (Filter filter : securityFilterChain.getFilters()) {
@@ -119,9 +140,11 @@ public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAwa
 				}
 			}
 		}
+		// 遍历执行webSecurity的自定义配置
 		for (WebSecurityCustomizer customizer : this.webSecurityCustomizers) {
 			customizer.customize(this.webSecurity);
 		}
+		// 构建过滤器链，最终调用AbstractConfiguredSecurityBuilder#dobuild
 		return this.webSecurity.build();
 	}
 
@@ -145,14 +168,19 @@ public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAwa
 	 * {@code <SecurityConfigurer<FilterChainProxy, WebSecurityBuilder>} instances used to
 	 * create the web configuration
 	 * @throws Exception
+	 *
+	 * 初始化WebSecurity对象，同时收集所有的自定义配置类
 	 */
 	@Autowired(required = false)
 	public void setFilterChainProxySecurityConfigurer(ObjectPostProcessor<Object> objectPostProcessor,
 			ConfigurableListableBeanFactory beanFactory) throws Exception {
+		// 创建WebSecurity对象，使用后置处理器对其进行处理
 		this.webSecurity = objectPostProcessor.postProcess(new WebSecurity(objectPostProcessor));
+		// 设置@EnableWebSecurity的debug属性
 		if (this.debugEnabled != null) {
 			this.webSecurity.debug(this.debugEnabled);
 		}
+		// 收集所有的自定义配置类，因为一个配置就代表一个过滤器链，需对配置类进行优先级排序
 		List<SecurityConfigurer<Filter, WebSecurity>> webSecurityConfigurers = new AutowiredWebSecurityConfigurersIgnoreParents(
 				beanFactory).getWebSecurityConfigurers();
 		webSecurityConfigurers.sort(AnnotationAwareOrderComparator.INSTANCE);
@@ -167,6 +195,7 @@ public class WebSecurityConfiguration implements ImportAware, BeanClassLoaderAwa
 			previousOrder = order;
 			previousConfig = config;
 		}
+		// 将收集到的配置类添加到父类的configurers集合中
 		for (SecurityConfigurer<Filter, WebSecurity> webSecurityConfigurer : webSecurityConfigurers) {
 			this.webSecurity.apply(webSecurityConfigurer);
 		}

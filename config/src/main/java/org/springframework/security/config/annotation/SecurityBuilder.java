@@ -22,6 +22,9 @@ package org.springframework.security.config.annotation;
  * @param <O> The type of the Object being built
  * @author Rob Winch
  * @since 3.2
+ *
+ * SecurityBuilder用来构建对象，过滤器链（SecurityFilterChain）、代理过滤器链（FilterChainProxy）、
+ * AuthenticationManager
  */
 public interface SecurityBuilder<O> {
 

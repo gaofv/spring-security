@@ -137,18 +137,35 @@ import org.springframework.web.servlet.handler.HandlerMappingIntrospector;
  * @author Joe Grandja
  * @since 3.2
  * @see EnableWebSecurity
+ *
+ *  HttpSecurity用于构建一条过滤器链SecurityFilterChain,
+ * 	每个过滤器链中包含了一个路径匹配器，和一组Spring Security过滤器
+ * 	HttpSecurity会把过滤器对应的配置类收集起来，保存到父类的configurers，
+ * 	在后续的构建过程中，再将这些xxxConfigurer构建为具体的Spring Security过滤器，
+ * 	同时添加到HttpSecurity的filters集合中
+ *
+ * 	以Form表单为例，通过调用formLogin方法完成form表单的配置，有两个重载的方法，
+ * 		一个是无参的返回值类型为FormLoginConfigurer，开发者可以在该对象的基础上继续完善form表单的配置
+ * 		另外一个是有参方法，参数类型为Customizer函数式接口，用来接收form表单配置，返回值类型为HttpSecurity。可以直接进行其他过滤器的配置
+ * 			当然也可以使用默认配置，调用withDefault方法，
+ * 	无论是无参还是有参方法，都需要调用getOrApply，如果AbstractConfiguredSecurityBuilder的configurers中已经存在该配置则直接返回，
+ * 	否则就将配置添加到configurers集合中，这些配置后续会在父类的doBuild方法中进行构建转换成filter，同时添加到HttpSecurity的filters集合中
+ *
+ * 	performBuild方法就是用来构建SecurityFilterChain，传入请求匹配器和过滤器集合filters，在构建之前会按照既定的顺序对filters排序
+ *
+ *	每个过滤器链都会有AuthenticationManager对象来进行认证操作
  */
 public final class HttpSecurity extends AbstractConfiguredSecurityBuilder<DefaultSecurityFilterChain, HttpSecurity>
 		implements SecurityBuilder<DefaultSecurityFilterChain>, HttpSecurityBuilder<HttpSecurity> {
-
+	// 路径匹配器
 	private final RequestMatcherConfigurer requestMatcherConfigurer;
-
+	// Spring Security过滤器
 	private List<OrderedFilter> filters = new ArrayList<>();
-
+	// 请求匹配器
 	private RequestMatcher requestMatcher = AnyRequestMatcher.INSTANCE;
-
+	// 排序之后的过滤器链
 	private FilterOrderRegistration filterOrders = new FilterOrderRegistration();
-
+	// 认证管理器
 	private AuthenticationManager authenticationManager;
 
 	/**

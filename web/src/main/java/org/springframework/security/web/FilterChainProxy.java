@@ -140,17 +140,31 @@ import org.springframework.web.filter.GenericFilterBean;
  * @author Ben Alex
  * @author Luke Taylor
  * @author Rob Winch
+ *
+ *
+ *
+ * Spring Security Filter 并不是直接嵌入到 Web Filter 中的，而是通过 FilterChainProxy 来统一管理 Spring Security Filter，
+ * FilterChainProxy 本身则通过 Spring 提供的 DelegatingFilterProxy 代理过滤器嵌入到 Web Filter 之中。
  */
 public class FilterChainProxy extends GenericFilterBean {
 
 	private static final Log logger = LogFactory.getLog(FilterChainProxy.class);
-
+	/**
+	 * 标记过滤器是否已经执行过了
+	 */
 	private static final String FILTER_APPLIED = FilterChainProxy.class.getName().concat(".APPLIED");
-
+	/**
+	 * Spring Security过滤器链
+	 */
 	private List<SecurityFilterChain> filterChains;
-
+	/**
+	 * filterChainValidator 是 FilterChainProxy 配置完成后的校验方法，
+	 * 默认使用的 NullFilterChainValidator 实际上对应了一个空方法，也就是不做任何校验。
+	 */
 	private FilterChainValidator filterChainValidator = new NullFilterChainValidator();
-
+	/**
+	 * 防火墙
+	 */
 	private HttpFirewall firewall = new StrictHttpFirewall();
 
 	private RequestRejectedHandler requestRejectedHandler = new DefaultRequestRejectedHandler();
@@ -173,6 +187,11 @@ public class FilterChainProxy extends GenericFilterBean {
 		this.filterChainValidator.validate(this);
 	}
 
+	/**
+	 * 在 doFilter 方法中，正常来说，clearContext 参数每次都是 true，
+	 * 于是每次都先给 request 标记上 FILTER_APPLIED 属性，然后执行 doFilterInternal 方法去走过滤器，执行完毕后，
+	 * 最后在 finally 代码块中清除 SecurityContextHolder 中保存的用户信息，同时移除 request 中的标记。
+	 */
 	@Override
 	public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
@@ -203,9 +222,17 @@ public class FilterChainProxy extends GenericFilterBean {
 
 	private void doFilterInternal(ServletRequest request, ServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
+		// 首先将请求封装为一个 FirewalledRequest 对象，在这个封装的过程中，也会判断请求是否合法
 		FirewalledRequest firewallRequest = this.firewall.getFirewalledRequest((HttpServletRequest) request);
+		// 对响应进行封装。
 		HttpServletResponse firewallResponse = this.firewall.getFirewalledResponse((HttpServletResponse) response);
+		// 调用 getFilters 方法找到过滤器链。该方法就是根据当前的请求，
+		// 从 filterChains 中找到对应的过滤器链，然后由该过滤器链去处理请求
 		List<Filter> filters = getFilters(firewallRequest);
+		// 如果找出来的 filters 为 null，或者集合中没有元素，那就是说明当前请求不需要经过过滤器。
+		// 直接执行 chain.doFilter ，这个就又回到原生过滤器中去了。那么什么时候会发生这种情况呢？
+		// 那就是针对项目中的静态资源，如果我们配置了资源放行，如 web.ignoring().antMatchers("/hello");，
+		// 那么当你请求 /hello 接口时就会走到这里来，也就是说这个不经过 Spring Security Filter。
 		if (filters == null || filters.size() == 0) {
 			if (logger.isTraceEnabled()) {
 				logger.trace(LogMessage.of(() -> "No security for " + requestLine(firewallRequest)));
@@ -217,6 +244,8 @@ public class FilterChainProxy extends GenericFilterBean {
 		if (logger.isDebugEnabled()) {
 			logger.debug(LogMessage.of(() -> "Securing " + requestLine(firewallRequest)));
 		}
+		// 如果查询到的 filters 中是有值的，那么这个 filters 集合中存放的就是我们要经过的过滤器链了。
+		// 此时它会构造出一个虚拟的过滤器链 VirtualFilterChain 出来，并执行其中的 doFilter 方法。
 		VirtualFilterChain virtualFilterChain = new VirtualFilterChain(firewallRequest, chain, filters);
 		virtualFilterChain.doFilter(firewallRequest, firewallResponse);
 	}
@@ -307,15 +336,25 @@ public class FilterChainProxy extends GenericFilterBean {
 	 * the additional internal list of filters which match the request.
 	 */
 	private static final class VirtualFilterChain implements FilterChain {
-
+		/**
+		 * 原生过滤器链，也就是Web Filter
+		 */
 		private final FilterChain originalChain;
-
+		/**
+		 * Spring Security过滤器链
+		 */
 		private final List<Filter> additionalFilters;
-
+		/**
+		 * 当前请求
+		 */
 		private final FirewalledRequest firewalledRequest;
-
+		/**
+		 * 过滤器链中的过滤器的个数
+		 */
 		private final int size;
-
+		/**
+		 * 过滤器链遍历时的下标
+		 */
 		private int currentPosition = 0;
 
 		private VirtualFilterChain(FirewalledRequest firewalledRequest, FilterChain chain,
@@ -326,6 +365,11 @@ public class FilterChainProxy extends GenericFilterBean {
 			this.firewalledRequest = firewalledRequest;
 		}
 
+		/**
+		 * doFilter 方法就是 Spring Security 中过滤器挨个执行的过程，如果 currentPosition == size，表示过滤器链已经执行完毕
+		 * 此时通过调用 originalChain.doFilter 进入到原生过滤链方法中，同时也退出了 Spring Security 过滤器链。
+		 * 否则就从 additionalFilters 取出 Spring Security 过滤器链中的一个个过滤器，挨个调用 doFilter 方法。
+		 */
 		@Override
 		public void doFilter(ServletRequest request, ServletResponse response) throws IOException, ServletException {
 			if (this.currentPosition == this.size) {

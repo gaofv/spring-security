@@ -16,13 +16,13 @@
 
 package org.springframework.security.config.annotation.web.configuration;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
-
 import org.springframework.context.annotation.ImportSelector;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
+
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Used by {@link EnableWebSecurity} to conditionally import:
@@ -37,9 +37,10 @@ import org.springframework.util.StringUtils;
  *
  * @author Joe Grandja
  * @author Josh Cummings
- * @since 5.1
  * @see OAuth2ClientConfiguration
  * @see SecurityReactorContextConfiguration
+ * 判断当前环境中是否存在OAuth2，如果存在则注入OAuth2的相关配置
+ * @since 5.1
  */
 final class OAuth2ImportSelector implements ImportSelector {
 
