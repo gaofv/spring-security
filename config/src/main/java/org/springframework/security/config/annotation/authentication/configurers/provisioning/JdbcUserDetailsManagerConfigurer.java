@@ -16,11 +16,6 @@
 
 package org.springframework.security.config.annotation.authentication.configurers.provisioning;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.sql.DataSource;
-
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.datasource.init.DataSourceInitializer;
@@ -29,6 +24,10 @@ import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.security.config.annotation.authentication.ProviderManagerBuilder;
 import org.springframework.security.core.userdetails.UserCache;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
+
+import javax.sql.DataSource;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Configures an
@@ -43,6 +42,11 @@ import org.springframework.security.provisioning.JdbcUserDetailsManager;
  * @param <B> the type of the {@link ProviderManagerBuilder} that is being configured
  * @author Rob Winch
  * @since 3.2
+ *
+ * 1. 使用ProviderManagerBuidler构建AuthenticationManager
+ * 2. DaoAuthenticationProvider填充到AuthenticationManagerBuilder
+ * 3. 此时UserDetailsService类型为JdbcUserDetailsManager
+ * 4. 初始化过程为：使用JdbcUserDetailsManager构建用户对象
  */
 public class JdbcUserDetailsManagerConfigurer<B extends ProviderManagerBuilder<B>>
 		extends UserDetailsManagerConfigurer<B, JdbcUserDetailsManagerConfigurer<B>> {

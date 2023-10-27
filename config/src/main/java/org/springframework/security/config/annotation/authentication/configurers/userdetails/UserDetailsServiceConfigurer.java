@@ -30,6 +30,11 @@ import org.springframework.security.core.userdetails.UserDetailsService;
  * concrete UserDetailsService.
  * @author Rob Winch
  * @since 3.2
+ *
+ *  1. 使用ProviderManagerBuidler构建AuthenticationManager
+ *  2. DaoAuthenticationProvider填充到AuthenticationManagerBuilder
+ *  3. 提供了设置userDetailsService的入口
+ *  4. 提供了初始化userDetailsService的入口
  */
 public class UserDetailsServiceConfigurer<B extends ProviderManagerBuilder<B>, C extends UserDetailsServiceConfigurer<B, C, U>, U extends UserDetailsService>
 		extends AbstractDaoAuthenticationConfigurer<B, C, U> {

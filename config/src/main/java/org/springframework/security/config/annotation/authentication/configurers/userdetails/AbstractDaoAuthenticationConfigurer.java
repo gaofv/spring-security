@@ -32,6 +32,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * @param <U> The type of {@link UserDetailsService} that is being used
  * @author Rob Winch
  * @since 3.2
+ * 1. 使用ProviderManagerBuidler构建AuthenticationManager
+ * 2. DaoAuthenticationProvider填充到AuthenticationManagerBuilder
+ * 3. 提供了设置userDetailsService的入口
  */
 public abstract class AbstractDaoAuthenticationConfigurer<B extends ProviderManagerBuilder<B>, C extends AbstractDaoAuthenticationConfigurer<B, C, U>, U extends UserDetailsService>
 		extends UserDetailsAwareConfigurer<B, U> {

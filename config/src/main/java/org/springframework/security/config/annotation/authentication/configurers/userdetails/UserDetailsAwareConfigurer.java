@@ -29,6 +29,15 @@ import org.springframework.security.core.userdetails.UserDetailsService;
  * @param <B> the type of the {@link ProviderManagerBuilder}
  * @param <U> the type of {@link UserDetailsService}
  * @author Rob Winch
+ *
+ * UserDetailsAwareConfigurer继承自SecurityConfigurerAdapter，
+ * 这里泛型的第一个参数是AuthenticationManager，第二个参数是ProviderManagerBuilder类型，
+ * 从泛型继承关系则可以看出该类的目的是使用ProviderManagerBuilder去构建AuthenticationManager
+ *
+ * 从继承关系可以看出
+ * 1. 使用ProviderManagerBuidler构建AuthenticationManager
+ * 2. 为子类扩展了getUserDetailsService的能力，返回值为UserDetailsService类型，代表数据源
+ *
  */
 public abstract class UserDetailsAwareConfigurer<B extends ProviderManagerBuilder<B>, U extends UserDetailsService>
 		extends SecurityConfigurerAdapter<AuthenticationManager, B> {

@@ -16,9 +16,6 @@
 
 package org.springframework.security.config.annotation.authentication.configurers.provisioning;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.springframework.security.config.annotation.SecurityBuilder;
 import org.springframework.security.config.annotation.authentication.ProviderManagerBuilder;
 import org.springframework.security.config.annotation.authentication.configurers.userdetails.UserDetailsServiceConfigurer;
@@ -27,6 +24,9 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.User.UserBuilder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.provisioning.UserDetailsManager;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Base class for populating an
@@ -37,6 +37,13 @@ import org.springframework.security.provisioning.UserDetailsManager;
  * @param <C> the type of {@link UserDetailsManagerConfigurer}
  * @author Rob Winch
  * @since 3.2
+ *
+ * UserDetailsManager构建用户对象，完成对AuthenticationManagerBuilder的填充
+ *
+ *  1. 使用ProviderManagerBuidler构建AuthenticationManager
+ *  2. DaoAuthenticationProvider填充到AuthenticationManagerBuilder
+ *  3. 此时UserDetailsService类型为UserDetailsManager
+ *  4. 初始化过程为：使用UserDetailsService构建用户对象
  */
 public class UserDetailsManagerConfigurer<B extends ProviderManagerBuilder<B>, C extends UserDetailsManagerConfigurer<B, C>>
 		extends UserDetailsServiceConfigurer<B, C, UserDetailsManager> {
